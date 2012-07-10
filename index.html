@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> </title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js" type="text/javascript"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js" type="text/javascript"></script>
+        <script src="jsdiff.js" type="text/javascript"></script>
+        <script src="levenshtein.js" type="text/javascript"></script>
+        <script src="jquery.xcolor.min.js" type="text/javascript"></script>
+        <script src="taffy-min.js" type="text/javascript"></script>
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/base/jquery-ui.css" type="text/css">
+        <script type="text/javascript">
+
+var processed = [];
+
+var addTextarea = function() {
+    var num_text_areas = $('textarea').length;
+    $('#textareas_box').append('<textarea id="text'+num_text_areas+'"></textarea>');
+}
+
+var processText = function() {
+    processed = [];
+    for(var i=0;i<$('#textareas_box > div').length;i++) {
+        processed.push($(('#text_'+i)).text().replace(/\W+/g, ' ').replace(/\d+/g,'').match(/\S+/g));
+    };
+    
+    if(processed.length < 1) return;
+    
+    for(var i=0;i<processed.length;i++) {
+        for(var o=0;o<processed[i].length;o++) {
+            for(var p=0;p<processed.length;p++) {
+                if(i == p) continue;
+                
+                var needle = (typeof processed[i][o] == 'object') ? processed[i][o].v : processed[i][o];
+                var found = -1;
+                for(var h=0;h<processed[p].length;h++) {
+                    if(typeof processed[p][h] == 'string' && processed[p][h] == needle) {
+                        found = h;
+                        break;
+                    } else if(typeof processed[p][h] == 'object' && processed[p][h].v == needle) {
+                        found = h;
+                        break;
+                    }
+                }
+                
+                if(found >= 0) {
+                    if(typeof processed[i][o] == 'string') 
+                        processed[i][o] = {v:processed[i][o], foundin:[]};
+                    processed[i][o].foundin.push(p);
+                }
+            }
+        }
+    }
+    
+    for(var i=0; i<processed.length;i++) {
+        var base_color = $(('#text_'+i)).attr("color");
+        for(var o=0;o<processed[i].length;o++) {
+            
+            if(typeof processed[i][o] == 'string') {
+                processed[i][o] = {v:processed[i][o], color:base_color};
+                continue;
+            } else {
+                processed[i][o].color = base_color;
+                for(var f=0;f<processed[i][o].foundin.length;f++) {
+                    var mix_color = $(('#text_'+(processed[i][o].foundin[f]))).attr("color");
+                    processed[i][o].color = $.xcolor.average(processed[i][o].color, mix_color).getHex();
+                }
+            }
+        }
+    }
+    
+    for(var i=0;i<processed.length;i++) {
+        var data = '';
+        for(var o=0;o<processed[i].length;o++) {
+            data += '<span style="color:'+processed[i][o].color+';">'+processed[i][o].v+'</span> ';
+            //var patt = new RegExp("(\s+)("+processed[i][o].v+")");
+            //var replace_str = '$1<span style="color:'+processed[i][o].color+';">$2</span>';
+            //console.log(patt,'patt');
+            //console.log(replace_str,'replace_str');
+            //$(('#text_'+i)).html($(('#text_'+i)).html().replace(new RegExp('([^>])('+processed[i][o].v+')'), '$1<span style="color:'+processed[i][o].color+';">$2</span>'));
+        }
+        
+        $(('#text_'+i)).html(data);
+    }
+}
+
+$(document).ready(function() {
+    $("button").button();
+    //$( "textarea" ).resizable({
+    //		handles: "se"
+	//});
+    $('#process_btn').click(processText);
+    $('#add_textarea_btn').click(addTextarea);
+    //var data = diffString(
+    //   "The red brown fox jumped over the rolling log.",
+    //   "The brown spotted fox leaped over the rolling log"
+    //);
+    //console.log(data,'data');
+    //$('body').html(data);
+});
+        </script>
+    </head>
+    <body>
+    <!--button id="add_textarea_btn">Add text to compare</button-->
+    <div id="textareas_box">
+        <div contenteditable="true" id="text_0" color="yellow">Now Herod the tetrarch heard of all that was happening; and he was greatly perplexed, because it was
+        said by some that John had risen from the dead,
+        8 and by some that Elijah had appeared, and by others that one of the prophets of old had risen again.
+        9 Herod said, "I myself had John beheaded; but who is this man about whom I hear such things?" And he
+        kept trying to see Him.</div>
+        <div contenteditable="true" id="text_1" color="red">And King Herod heard of it, for His name had become well known; and people were saying, "John the
+        Baptist has risen from the dead, and that is why these miraculous powers are at work in Him."
+        15 But others were saying, "He is Elijah." And others were saying, "He is a prophet, like one of the
+        prophets of old."
+        16 But when Herod heard of it, he kept saying, "John, whom I beheaded, has risen!"
+        17 For Herod himself had sent and had John arrested and bound in prison on account of Herodias, the
+        wife of his brother Philip, because he had married her.
+        18 For John had been saying to Herod, "It is not lawful for you to have your brother's wife."
+        19 Herodias had a grudge against him and wanted to put him to death and could not do so;
+        20 for Herod was afraid of John, knowing that he was a righteous and holy man, and he kept him safe.
+        And when he heard him, he was very perplexed; but he used to enjoy listening to him.
+        21 A strategic day came when Herod on his birthday gave a banquet for his lords and military
+        commanders and the leading men of Galilee;
+        22 and when the daughter of Herodias herself came in and danced, she pleased Herod and his dinner
+        guests; and the king said to the girl, "Ask me for whatever you want and I will give it to you."
+        23 And he swore to her, "Whatever you ask of me, I will give it to you; up to half of my kingdom."
+        24 And she went out and said to her mother, "What shall I ask for?" And she said, "The head of John the
+        Baptist."
+        25 Immediately she came in a hurry to the king and asked, saying, "I want you to give me at once the
+        head of John the Baptist on a platter."
+        26 And although the king was very sorry, yet because of his oaths and because of his dinner guests, he
+        was unwilling to refuse her.
+        27 Immediately the king sent an executioner and commanded him to bring back his head. And he went
+        and had him beheaded in the prison,
+        28 and brought his head on a platter, and gave it to the girl; and the girl gave it to her mother.
+        29 When his disciples heard about this, they came and took away his body and laid it in a tomb.</div>
+        <div contenteditable="true" id="text_2" color="blue">At that time Herod the tetrarch heard the news about Jesus,
+        2 and said to his servants, "This is John the Baptist; he has risen from the dead, and that is why
+        miraculous powers are at work in him."
+        3 For when Herod had John arrested, he bound him and put him in prison because of Herodias, the wife
+        of his brother Philip.
+        4 For John had been saying to him, "It is not lawful for you to have her."
+        5 Although Herod wanted to put him to death, he feared the crowd, because they regarded John as a
+        prophet.
+        6 But when Herod's birthday came, the daughter of Herodias danced before them and pleased Herod,
+        7 so much that he promised with an oath to give her whatever she asked.
+        8 Having been prompted by her mother, she said, "Give me here on a platter the head of John the
+        Baptist."
+        9 Although he was grieved, the king commanded it to be given because of his oaths, and because of his
+        dinner guests.
+        10 He sent and had John beheaded in the prison.
+        11 And his head was brought on a platter and given to the girl, and she brought it to her mother.
+        12 His disciples came and took away the body and buried it; and they went and reported to Jesus.</div>
+    </div>
+    <button id="process_btn">Process</button>
+    <div id="processed_box"></div>
+    </body>
+</html>

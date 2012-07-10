@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> </title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js" type="text/javascript"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js" type="text/javascript"></script>
+        <script src="jsdiff.js" type="text/javascript"></script>
+        <script src="levenshtein.js" type="text/javascript"></script>
+        <script src="jquery.xcolor.min.js" type="text/javascript"></script>
+        <script src="taffy-min.js" type="text/javascript"></script>
+        <script src="jquery.ps-color-picker.min.js" type="text/javascript"></script>
+        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/base/jquery-ui.css" type="text/css">
+        <link href='http://fonts.googleapis.com/css?family=Pontano+Sans' rel='stylesheet' type='text/css'>
+        <style>
+        body {
+            font-family: 'Pontano Sans', serif;
+        }
+
+        .textblock {
+            width:33%;
+            float:left;
+        }
+
+        .title {
+            font-size: 18px;
+            text-shadow: 2px 2px 2px #aaa;
+        }
+        
+        .titlebar {
+            height:22px;
+            text-align: center;
+        }
+        .colorpicker {
+            width: 45px;
+            height: 20px;
+            border: 1px solid black;
+            line-height: 22px;
+            text-align: center;
+            float:right;
+        }
+        
+        .editarea {
+            max-height:275px;
+            font-weight:bold;
+            overflow-y: scroll;
+            border-style:dotted;
+            margin:5px;
+            padding:5px;
+            border-radius: 15px;
+        }
+        </style>
+        <script type="text/javascript">
+
+var processed = [];
+
+var addTextarea = function() {
+    var num_text_areas = $('textarea').length;
+    $('#textareas_box').append('<textarea id="text'+num_text_areas+'"></textarea>');
+}
+
+var processText = function() {
+    processed = [];
+    for(var i=0;i<$('.editarea').length;i++) {
+        var base_color = $(('#text_'+i)).attr("color");
+        var t = TAFFY(
+                _.map(
+                    $(('#text_'+i)).text().replace(/\W+/g, ' ').replace(/\d+/g,'').match(/\S+/g),function(w) {return {v:w.toLowerCase(), foundin:[], color:base_color};}
+                )
+            );
+        
+        processed.push(t);
+    };
+    
+    if(processed.length < 1) return;
+    
+    for(var i=0;i<processed.length;i++) {
+        var distinct_words = processed[i]().distinct("v");
+        
+        for(var p=0;p<processed.length;p++) {
+            if(i == p) continue;
+            
+            for(var dwi=0;dwi<distinct_words.length;dwi++) {
+                var dw = distinct_words[dwi];
+                var s = processed[p]({v:dw});
+                if(s.count() > 0) {
+                    var r = processed[i]({v:dw});
+                    var max = _.min([s.count(), r.count()]);
+                    
+                    var pa = r.get();
+                    var sa = s.get();
+                    for(var c=0;c<max;c++) {
+                        pa[c].foundin.push(p);
+                        pa[c].foundin = _.uniq(pa[c].foundin);
+                        var mix_color = $(('#text_'+p)).attr("color");
+                        pa[c].color = $.xcolor.average(pa[c].color, mix_color).getHex();
+                        
+                        sa[c].foundin.push(i);
+                        sa[c].foundin = _.uniq(sa[c].foundin);
+                    }
+                }
+            }
+        }
+    }
+    
+    for(var i=0;i<processed.length;i++) {
+        var data = '';
+        var ia = processed[i]().get();
+        for(var o=0;o<ia.length;o++) {
+            var ccs = $.xcolor.tetrad(ia[o].color);
+            var cc;
+            for(var c=0;c<ccs.length;c++) {
+                if($.xcolor.readable(ccs[c],ia[o].color)) {
+                    cc = ccs[c];
+                    break;
+                }
+            }
+            
+            if(cc == undefined) {
+                cc = $.xcolor.darken(ia[o].color);
+            }
+            
+            data += '<span style="background-color:'+ia[o].color+'; color:'+cc+'">'+ia[o].v+'</span> ';
+        }
+        
+        $(('#text_'+i)).html(data);
+    }
+}
+
+var coloropts = {
+   width:300,
+   height:160,   
+   //color:{r:64,g:255,b:255},
+   drawColorMapPointer:function(ctx,w,h,x,y,l){
+      if ( this.icon == null ){
+         this.icon = document.createElement("canvas");
+         this.icon.width = "16"; this.icon.height = "16";
+         var ctx1 = this.icon.getContext("2d");
+         ctx1.beginPath();
+         ctx1.strokeStyle = "rgb(255,255,255)";
+         ctx1.moveTo(0,0);ctx1.lineTo(16,16);
+         ctx1.moveTo(0,16);ctx1.lineTo(16,0);
+         ctx1.stroke();
+      }
+      ctx.drawImage(this.icon,x-8,y-8);
+   },
+   drawHueMapPointer:function(ctx,w,h,x,y,l){
+      if ( this.icon == null ){
+         this.icon = document.createElement("canvas");
+         this.icon.width = "8"; this.icon.height = "8";
+         var ctx1 = this.icon.getContext("2d");
+         ctx1.beginPath();
+         ctx1.strokeStyle = "rgb(255,255,255)";
+         ctx1.moveTo(0,0);ctx1.lineTo(8,8);
+         ctx1.moveTo(0,8);ctx1.lineTo(8,0);
+         ctx1.stroke();
+      }
+      ctx.drawImage(this.icon,x-4,y-4);
+   }
+};
+
+var setupcolor = function() {
+    for(var i=0;i<$('.editarea').length;i++) {
+        var base_color = $.xcolor.webround($(('#text_'+i)).attr("color")).getHex();
+        var opts = _.union(coloropts, {color:base_color});
+        $(("#color_"+i)).CanvasColorPicker(opts);
+    };
+}
+
+$(document).ready(function() {
+    $("button").button();
+    $('#process_btn').click(processText);
+    $('#add_textarea_btn').click(addTextarea);
+    
+    setupcolor();
+    
+    //var data = diffString(
+    //   "The red brown fox jumped over the rolling log.",
+    //   "The brown spotted fox leaped over the rolling log"
+    //);
+    //console.log(data,'data');
+    //$('body').html(data);
+    processText();
+});
+        </script>
+    </head>
+    <body>
+    <!--button id="add_textarea_btn">Add text to compare</button-->
+    <div id="textareas_box">
+        <div class="textblock">
+            <div class="titlebar"><span class="title">Text block 1</span><div class="colorpicker" id="color_0">Color</div></div>
+            <div class="editarea" contenteditable="true" id="text_0" color="yellow">Now Herod the tetrarch heard of all that was happening; and he was greatly perplexed, because it was
+            said by some that John had risen from the dead,
+            8 and by some that Elijah had appeared, and by others that one of the prophets of old had risen again.
+            9 Herod said, "I myself had John beheaded; but who is this man about whom I hear such things?" And he
+            kept trying to see Him.</div>
+        </div>
+        <div class="textblock">
+            <div class="titlebar"><span class="title">Text block 2</span><div class="colorpicker" id="color_1">Color</div></div>
+            <div class="editarea" contenteditable="true" id="text_1" color="red">And King Herod heard of it, for His name had become well known; and people were saying, "John the
+            Baptist has risen from the dead, and that is why these miraculous powers are at work in Him."
+            15 But others were saying, "He is Elijah." And others were saying, "He is a prophet, like one of the
+            prophets of old."
+            16 But when Herod heard of it, he kept saying, "John, whom I beheaded, has risen!"
+            17 For Herod himself had sent and had John arrested and bound in prison on account of Herodias, the
+            wife of his brother Philip, because he had married her.
+            18 For John had been saying to Herod, "It is not lawful for you to have your brother's wife."
+            19 Herodias had a grudge against him and wanted to put him to death and could not do so;
+            20 for Herod was afraid of John, knowing that he was a righteous and holy man, and he kept him safe.
+            And when he heard him, he was very perplexed; but he used to enjoy listening to him.
+            21 A strategic day came when Herod on his birthday gave a banquet for his lords and military
+            commanders and the leading men of Galilee;
+            22 and when the daughter of Herodias herself came in and danced, she pleased Herod and his dinner
+            guests; and the king said to the girl, "Ask me for whatever you want and I will give it to you."
+            23 And he swore to her, "Whatever you ask of me, I will give it to you; up to half of my kingdom."
+            24 And she went out and said to her mother, "What shall I ask for?" And she said, "The head of John the
+            Baptist."
+            25 Immediately she came in a hurry to the king and asked, saying, "I want you to give me at once the
+            head of John the Baptist on a platter."
+            26 And although the king was very sorry, yet because of his oaths and because of his dinner guests, he
+            was unwilling to refuse her.
+            27 Immediately the king sent an executioner and commanded him to bring back his head. And he went
+            and had him beheaded in the prison,
+            28 and brought his head on a platter, and gave it to the girl; and the girl gave it to her mother.
+            29 When his disciples heard about this, they came and took away his body and laid it in a tomb.</div>
+        </div>
+        <div class="textblock">
+            <div class="titlebar"><span class="title">Text block 3</span><div class="colorpicker" id="color_2">Color</div></div>
+            <div class="editarea" contenteditable="true" id="text_2" color="blue">At that time Herod the tetrarch heard the news about Jesus,
+            2 and said to his servants, "This is John the Baptist; he has risen from the dead, and that is why
+            miraculous powers are at work in him."
+            3 For when Herod had John arrested, he bound him and put him in prison because of Herodias, the wife
+            of his brother Philip.
+            4 For John had been saying to him, "It is not lawful for you to have her."
+            5 Although Herod wanted to put him to death, he feared the crowd, because they regarded John as a
+            prophet.
+            6 But when Herod's birthday came, the daughter of Herodias danced before them and pleased Herod,
+            7 so much that he promised with an oath to give her whatever she asked.
+            8 Having been prompted by her mother, she said, "Give me here on a platter the head of John the
+            Baptist."
+            9 Although he was grieved, the king commanded it to be given because of his oaths, and because of his
+            dinner guests.
+            10 He sent and had John beheaded in the prison.
+            11 And his head was brought on a platter and given to the girl, and she brought it to her mother.
+            12 His disciples came and took away the body and buried it; and they went and reported to Jesus.</div>
+        </div>
+    </div>
+    <button id="process_btn">Process</button>
+    <div id="processed_box"></div>
+    </body>
+</html>
