@@ -4,14 +4,14 @@
         <title> </title>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js" type="text/javascript"></script>
-        <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js" type="text/javascript"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js" type="text/javascript"></script>
         <script src="jsdiff.js" type="text/javascript"></script>
         <script src="levenshtein.js" type="text/javascript"></script>
         <script src="jquery.xcolor.min.js" type="text/javascript"></script>
         <script src="taffy-min.js" type="text/javascript"></script>
         <script src="jquery.ps-color-picker.min.js" type="text/javascript"></script>
-        <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/base/jquery-ui.css" type="text/css">
-        <link href='http://fonts.googleapis.com/css?family=Pontano+Sans' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/base/jquery-ui.css" type="text/css">
+        <link href='https://fonts.googleapis.com/css?family=Pontano+Sans' rel='stylesheet' type='text/css'>
         <style>
         body {
             font-family: 'Pontano Sans', serif;
@@ -60,11 +60,6 @@
 
 var processed = [];
 
-var addTextarea = function() {
-    var num_text_areas = $('textarea').length;
-    $('#textareas_box').append('<textarea id="text'+num_text_areas+'"></textarea>');
-}
-
 var processText = function() {
     processed = [];
     for(var i=0;i<$('.editarea').length;i++) {
@@ -98,8 +93,8 @@ var processText = function() {
                     for(var c=0;c<max;c++) {
                         pa[c].foundin.push(p);
                         pa[c].foundin = _.uniq(pa[c].foundin);
-                        var mix_color = $(('#text_'+p)).attr("color");
-                        pa[c].color = $.xcolor.average(pa[c].color, mix_color).getHex();
+                        //var mix_color = $(('#text_'+p)).attr("color");
+                        //pa[c].color = $.xcolor.test(palette[pa[c].foundin.join('')]).getHex();
                         
                         sa[c].foundin.push(i);
                         sa[c].foundin = _.uniq(sa[c].foundin);
@@ -113,100 +108,50 @@ var processText = function() {
         var data = '';
         var ia = processed[i]().get();
         for(var o=0;o<ia.length;o++) {
-            var ccs = $.xcolor.tetrad(ia[o].color);
+            color = palette[""+i+(ia[o].foundin ? ia[o].foundin.join('') : "")];
+            var ccs = $.xcolor.tetrad(color);
             var cc;
             for(var c=0;c<ccs.length;c++) {
-                if($.xcolor.readable(ccs[c],ia[o].color)) {
+                if($.xcolor.readable(ccs[c],color)) {
                     cc = ccs[c];
                     break;
                 }
             }
             
             if(cc == undefined) {
-                cc = $.xcolor.darken(ia[o].color,2);
+                cc = $.xcolor.darken(color,2);
             }
             
-            data += '<span style="background-color:'+ia[o].color+'; color:'+cc+';">'+ia[o].v+'</span> ';
+            data += '<span style="background-color:'+color+'; color:'+cc+';">'+ia[o].v+'</span> ';
         }
         
         $(('#text_'+i)).html(data);
     }
 }
 
-var generateOkFn = function(c) {
-    var cidx = c;
-    return function(RGB,HSB){
-        var nc = $.xcolor.test(RGB).getHex();
-        $(('#text_'+cidx)).attr("color",nc)
-        
-        setupcolorkey();
-        processText();
-        return true;
-    }
-};
-
-var coloropts = {
-   width:300,
-   height:160,   
-   drawColorMapPointer:function(ctx,w,h,x,y,l){
-      if ( this.icon == null ){
-         this.icon = document.createElement("canvas");
-         this.icon.width = "16"; this.icon.height = "16";
-         var ctx1 = this.icon.getContext("2d");
-         ctx1.beginPath();
-         ctx1.strokeStyle = "rgb(255,255,255)";
-         ctx1.moveTo(0,0);ctx1.lineTo(16,16);
-         ctx1.moveTo(0,16);ctx1.lineTo(16,0);
-         ctx1.stroke();
-      }
-      ctx.drawImage(this.icon,x-8,y-8);
-   },
-   drawHueMapPointer:function(ctx,w,h,x,y,l){
-      if ( this.icon == null ){
-         this.icon = document.createElement("canvas");
-         this.icon.width = "8"; this.icon.height = "8";
-         var ctx1 = this.icon.getContext("2d");
-         ctx1.beginPath();
-         ctx1.strokeStyle = "rgb(255,255,255)";
-         ctx1.moveTo(0,0);ctx1.lineTo(8,8);
-         ctx1.moveTo(0,8);ctx1.lineTo(8,0);
-         ctx1.stroke();
-      }
-      ctx.drawImage(this.icon,x-4,y-4);
-   }
-};
 
 var setupcolor = function() {
     for(var i=0;i<$('.editarea').length;i++) {
         var base_color = $.xcolor.test($(('#text_'+i)).attr("color")).getHex();
         
         $(('#color_'+i)).css("background-color", base_color);
-        
-        var opts = {color:$.xcolor.test(base_color).getRGB(), onOK:generateOkFn(i),};
-        delete opts.color.a;
-        _.extend(opts, coloropts);
-        $(("#color_"+i)).CanvasColorPicker(opts);
     };
 };
 
-/*
-var average_colors = function(c1,c2) {
-    var pi = 3.1415 // Using math.Pi gives a completely different result, for some reason
-	h1, l1, s1 = rgb_to_hls(float64(c1.R)/255.0, float64(c1.G)/255.0, float64(c1.B)/255.0)
-	h2, l2, s2 = rgb_to_hls(float64(c2.R)/255.0, float64(c2.G)/255.0, float64(c2.B)/255.0)
-	h = 0.0
-	s = 0.5 * (s1 + s2)
-	l = 0.5 * (l1 + l2)
-	x = math.Cos(2.0*pi*h1) + math.Cos(2.0*pi*h2)
-	y = math.Sin(2.0*pi*h1) + math.Sin(2.0*pi*h2)
-	if (x != 0.0) || (y != 0.0) {
-		h = math.Atan2(y, x) / (2.0 * pi)
-	} else {
-		s = 0.0
-	}
-	r, g, b := hls_to_rgb(h, l, s)
-};
-*/
+var palette = {
+        "0":"yellow",
+        "01":"orange",
+        "02":"green",
+        "012":"brown",
+        "1":"red",
+        "10":"orange",
+        "12":"purple",
+        "102":"brown",
+        "2":"blue",
+        "20":"green",
+        "21":"purple",
+        "201":"brown"
+    };
 
 var setupcolorkey = function() {
     var colorkey_html = "";
@@ -220,33 +165,24 @@ var setupcolorkey = function() {
         base_color_mixes.push(mixed_color_hsv.h);
         //color_matrix[i] = [mixed_color_hsv.h];
         boxes[('#text_'+i)] = mixed_color_hsv;
-        
-        
     }
     
     for(var i=0;i<base_color_mixes.length;i++) {
         var new_color = $.xcolor.test(boxes[('#text_'+i)]).getHSV();
         colorkey_html += '<div class="colorkey_box" style="background-color:'+$.xcolor.test(new_color).getHex()+';">Text block '+(i+1)+'</div>';
+        
+        var mix_path = i+"";
         for(var o=0;o<base_color_mixes.length;o++) {
             if(o == i) continue;
-            var mix_color = $.xcolor.test(boxes[('#text_'+o)]).getHSV();
-//            mix_color.h = (new_color.h+mix_color.h)/2;
-//            mix_color.s = (new_color.s+mix_color.s)/2;
-//            mix_color.v = (new_color.v+mix_color.v)/2;
-            colorkey_html += '<div class="colorkey_box" style="background-color:'+$.xcolor.average(new_color,mix_color).getHex()+';">+ Text block '+(o+1)+'</div>';
+            
+            mix_path += o+"";
+            
+            mixed_color = $.xcolor.test(palette[mix_path]).getHex();
+            colorkey_html += '<div class="colorkey_box" style="background-color:'+mixed_color+';">+ Text block '+(o+1)+'</div>';
         }
         colorkey_html += '<div style="clear:both;"></div>';
     }
-    
-    var all_color = $.xcolor.test(boxes[('#text_'+0)]).getHSV();
-    all_color.h = (_.min(base_color_mixes)+_.max(base_color_mixes))/2;
-    colorkey_html += '<div class="colorkey_box" style="background-color:'+$.xcolor.test(all_color).getHex()+';">All blocks</div>';
-    
-//    console.log(base_color_mixes,'color_mixes');
-//    console.log(color_matrix,'color_matrix');
-//    console.log(boxes,'boxes');
-    
-    
+        
     $('#colorkeys_box').html(colorkey_html);
 };
 
@@ -257,7 +193,6 @@ var togglecolorkeys = function() {
 $(document).ready(function() {
     $("button").button();
     $('#process_btn').click(processText);
-    $('#add_textarea_btn').click(addTextarea);
     $('#colorkeys_btn').click(togglecolorkeys);
     
     $('#colorkeys_box').dialog({
